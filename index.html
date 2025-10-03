@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>idOS Blog Quiz</title>
+  <style>
+    body { font-family: Inter, system-ui, Arial; background:#f6f7fb; margin:0; padding:24px; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+    .card { width:100%; max-width:720px; background:#fff; border-radius:12px; box-shadow:0 8px 30px rgba(20,20,50,0.08); padding:28px; }
+    h1 { margin:0 0 8px 0; font-size:20px; }
+    p.desc { color:#555; margin:0 0 18px 0; }
+    .question { font-weight:600; margin:18px 0 12px 0; }
+    .options { display:grid; gap:10px; }
+    .opt { padding:12px 14px; border-radius:8px; border:1px solid #e6e9f2; cursor:pointer; background:#fbfbff; transition:all .15s; user-select:none; }
+    .opt:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(17,24,39,0.06); }
+    .opt.disabled { opacity:.7; cursor:default; transform:none; }
+    .opt.correct { border-color:#2ecc71; background:#e9fff0; }
+    .opt.wrong { border-color:#ff6b6b; background:#fff0f0; }
+    .controls { margin-top:18px; display:flex; gap:10px; align-items:center; }
+    button { padding:10px 14px; border-radius:8px; border:0; cursor:pointer; font-weight:600; }
+    #next { background:#2b6ef6; color:#fff; display:none; }
+    #restart { background:#f1f3f7; color:#222; display:none; }
+    .progress { margin-left:auto; color:#666; font-size:14px; }
+    #result { margin-top:16px; font-weight:700; font-size:16px; }
+    .sources { margin-top:14px; font-size:13px; color:#345; }
+    a.source { display:block; color:#2b6ef6; text-decoration:none; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>idOS Blog — Quick Quiz (5 Questions)</h1>
+    <p class="desc">Selected questions from the idOS blog. Pick the best answer (4 options). Correct answer will be revealed after each choice.</p>
+
+    <div id="quizArea">
+      <div id="qnum" class="progress"></div>
+      <div id="question" class="question">Loading...</div>
+      <div id="options" class="options"></div>
+
+      <div class="controls">
+        <button id="next">Next</button>
+        <button id="restart">Restart</button>
+        <div id="result"></div>
+      </div>
+    </div>
+
+    <div class="sources" id="sources" style="display:none;">
+      Sources:
+      <a class="source" href="https://www.idos.network/blog/idos-token-community" target="_blank" rel="noreferrer">idos — IDOS token & community</a>
+      <a class="source" href="https://www.idos.network/blog/idos-security-privacy" target="_blank" rel="noreferrer">idos — Security & Privacy</a>
+      <a class="source" href="https://www.idos.network/blog/key-abstracted-self-sovereign-identity-idos-and-partisia-blockchain-mpc-tech-are-making-it-possible" target="_blank" rel="noreferrer">idos — Partisia / MPC integration</a>
+      <a class="source" href="https://www.idos.network/blog/debate-contribution-xrpl-credentials-are-a-game-changer" target="_blank" rel="noreferrer">idos — XRPL Credentials</a>
+    </div>
+  </div>
+
+  <script>
+    const quizData = [
+      {
+        question: "1. What is the purpose of the IDOS token?",
+        options: [
+          "To play games",
+          "To store photos",
+          "Utility and community incentives in idOS network",
+          "To send emails"
+        ],
+        answer: 2
+      },
+      {
+        question: "2. According to the blog, how is idOS ensuring user data privacy and control?",
+        options: [
+          "Storing all data publicly",
+          "Encrypting data with keys only user has",
+          "Letting third parties control user data",
+          "Deleting data after 24h"
+        ],
+        answer: 1
+      },
+      {
+        question: "3. What cryptographic method is idOS using in partnership with Partisia?",
+        options: [
+          "Symmetric encryption only",
+          "Blockchain mining",
+          "Multi-Party Computation (MPC)",
+          "Plaintext storage"
+        ],
+        answer: 2
+      },
+      {
+        question: "4. Which blockchain deployment is IDOS first launched on (as per blog)?",
+        options: [
+          "Bitcoin",
+          "Arbitrum One",
+          "Solana",
+          "Polkadot"
+        ],
+        answer: 1
+      },
+      {
+        question: "5. What feature is enabled by XRPL “Credentials” in idOS’s integration?",
+        options: [
+          "Real-time gaming",
+          "Automated on-chain authorization tied to identity credentials",
+          "Free transactions always",
+          "Unlimited storage"
+        ],
+        answer: 1
+      }
+    ];
+
+    let current = 0;
+    let score = 0;
+    const qEl = document.getElementById('question');
+    const optsEl = document.getElementById('options');
+    const nextBtn = document.getElementById('next');
+    const restartBtn = document.getElementById('restart');
+    const resultEl = document.getElementById('result');
+    const qnumEl = document.getElementById('qnum');
+    const sourcesEl = document.getElementById('sources');
+
+    function renderQuestion() {
+      const q = quizData[current];
+      qnumEl.textContent = `Question ${current+1} of ${quizData.length}`;
+      qEl.textContent = q.question;
+      optsEl.innerHTML = '';
+      resultEl.textContent = '';
+      nextBtn.style.display = 'none';
+      restartBtn.style.display = 'none';
+      sourcesEl.style.display = 'none';
+
+      q.options.forEach((text, i) => {
+        const d = document.createElement('div');
+        d.className = 'opt';
+        d.textContent = text;
+        d.dataset.index = i;
+        d.addEventListener('click', onSelect);
+        optsEl.appendChild(d);
+      });
+    }
+
+    function onSelect(e) {
+      const selectedIndex = Number(e.currentTarget.dataset.index);
+      const q = quizData[current];
+
+      // disable all options
+      [...optsEl.children].forEach(el => {
+        el.classList.add('disabled');
+        el.removeEventListener('click', onSelect);
+      });
+
+      // mark correct / wrong
+      const correctIndex = q.answer;
+      const chosenEl = [...optsEl.children].find(el => Number(el.dataset.index) === selectedIndex);
+      const correctEl = [...optsEl.children].find(el => Number(el.dataset.index) === correctIndex);
+
+      if (selectedIndex === correctIndex) {
+        score++;
+        chosenEl.classList.add('correct');
+        resultEl.textContent = 'Correct ✅';
+      } else {
+        chosenEl.classList.add('wrong');
+        correctEl.classList.add('correct');
+        resultEl.textContent = 'Wrong ❌ — correct answer highlighted';
+      }
+
+      // show next or finish
+      if (current < quizData.length - 1) {
+        nextBtn.style.display = 'inline-block';
+      } else {
+        restartBtn.style.display = 'inline-block';
+        showFinal();
+      }
+    }
+
+    nextBtn.addEventListener('click', () => {
+      current++;
+      renderQuestion();
+    });
+
+    restartBtn.addEventListener('click', () => {
+      current = 0; score = 0;
+      renderQuestion();
+    });
+
+    function showFinal() {
+      resultEl.textContent = `Final Score: ${score} / ${quizData.length}`;
+      sourcesEl.style.display = 'block';
+    }
+
+    // initial load
+    renderQuestion();
+  </script>
+</body>
+</html>
