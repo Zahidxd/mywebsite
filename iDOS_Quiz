@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>idOS Blog Quiz</title>
+  <style>
+    body {
+      margin:0; padding:0; font-family:'Segoe UI',sans-serif;
+      height:100vh; display:flex; justify-content:center; align-items:center;
+      background: linear-gradient(135deg, #2b6ef6, #6a11cb, #2575fc);
+      background-size:400% 400%;
+      animation: gradientBG 12s ease infinite;
+      overflow:hidden;
+    }
+    @keyframes gradientBG {
+      0%{background-position:0% 50%;}
+      50%{background-position:100% 50%;}
+      100%{background-position:0% 50%;}
+    }
+    .floating {
+      position:absolute; width:60px; opacity:0.15;
+      animation: float 20s linear infinite;
+    }
+    @keyframes float {
+      from { transform: translateY(110vh) rotate(0deg); }
+      to { transform: translateY(-120vh) rotate(360deg); }
+    }
+    .card {
+      width:90%; max-width:700px; padding:28px;
+      border-radius:16px; background:rgba(255,255,255,0.15);
+      box-shadow:0 8px 32px rgba(0,0,0,0.2);
+      backdrop-filter:blur(12px); color:#fff;
+      z-index:2; text-align:center;
+    }
+    h1{margin:0;font-size:24px;}
+    .question{font-weight:600;margin:18px 0 12px;font-size:18px;}
+    .options{display:grid;gap:12px;}
+    .opt{
+      padding:12px;border-radius:8px;cursor:pointer;
+      background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);
+      transition:0.3s;
+    }
+    .opt:hover{background:rgba(255,255,255,0.25);}
+    .opt.correct{background:rgba(46,204,113,0.5);border-color:#2ecc71;}
+    .opt.wrong{background:rgba(255,99,71,0.5);border-color:#ff6b6b;}
+    .opt.disabled{pointer-events:none;opacity:.7;}
+    #result{margin-top:14px;font-size:16px;font-weight:bold;}
+    .hidden{display:none;}
+    /* Congrats Page */
+    #congrats{
+      display:none;flex-direction:column;align-items:center;justify-content:center;
+      color:#fff;z-index:3;text-align:center;
+    }
+    #congrats h2{font-size:32px;margin-bottom:12px;}
+    #congrats img{width:80px;height:80px;border-radius:50%;margin:12px 0;box-shadow:0 0 15px #fff;}
+    #congrats a{color:#fff;background:#1DA1F2;padding:8px 14px;
+      border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;margin-top:10px;}
+  </style>
+</head>
+<body>
+  <!-- Floating logos -->
+  <img src="https://idos.network/favicon-32x32.png" class="floating" style="left:10%;animation-duration:22s;">
+  <img src="https://idos.network/favicon-32x32.png" class="floating" style="left:40%;animation-duration:18s;">
+  <img src="https://idos.network/favicon-32x32.png" class="floating" style="left:70%;animation-duration:25s;">
+  <img src="https://idos.network/favicon-32x32.png" class="floating" style="left:85%;animation-duration:30s;">
+  <img src="https://idos.network/favicon-32x32.png" class="floating" style="left:55%;animation-duration:28s;">
+
+  <!-- Quiz Card -->
+  <div class="card" id="quizCard">
+    <h1>idOS Blog Quiz</h1>
+    <div id="qnum" class="progress"></div>
+    <div id="question" class="question"></div>
+    <div id="options" class="options"></div>
+    <div id="result"></div>
+  </div>
+
+  <!-- Congrats Page -->
+  <div id="congrats">
+    <h2>🎉 Congratulations! 🎉</h2>
+    <p>You answered all questions correctly.</p>
+    <img src="https://pbs.twimg.com/profile_images/1673279902682857472/0K6tKz9A_400x400.jpg" alt="Profile">
+    <p>Follow me for more iDOS ideas 👇</p>
+    <a href="https://x.com/yourhandle" target="_blank">@yourhandle</a>
+  </div>
+
+  <script>
+    const quizData=[
+      {q:"1. What is the purpose of the IDOS token?",opts:["To play games","To store photos","Utility and community incentives in idOS network","To send emails"],ans:2},
+      {q:"2. How is idOS ensuring user data privacy?",opts:["Storing all data publicly","Encrypting data with keys only user has","Letting third parties control user data","Deleting data after 24h"],ans:1},
+      {q:"3. What cryptographic method is idOS using with Partisia?",opts:["Symmetric encryption","Blockchain mining","Multi-Party Computation (MPC)","Plaintext storage"],ans:2},
+      {q:"4. Which blockchain deployment is IDOS first launched on?",opts:["Bitcoin","Arbitrum One","Solana","Polkadot"],ans:1},
+      {q:"5. What feature is enabled by XRPL Credentials?",opts:["Real-time gaming","On-chain authorization tied to identity credentials","Free transactions","Unlimited storage"],ans:1}
+    ];
+    let current=0;
+    let correctCount=0;
+
+    const qnum=document.getElementById("qnum");
+    const qEl=document.getElementById("question");
+    const optsEl=document.getElementById("options");
+    const resEl=document.getElementById("result");
+    const quizCard=document.getElementById("quizCard");
+    const congrats=document.getElementById("congrats");
+
+    function loadQ(){
+      const q=quizData[current];
+      qnum.textContent=`Question ${current+1} of ${quizData.length}`;
+      qEl.textContent=q.q;
+      optsEl.innerHTML=""; resEl.textContent="";
+      q.opts.forEach((opt,i)=>{
+        let d=document.createElement("div");
+        d.className="opt"; d.textContent=opt; d.dataset.i=i;
+        d.onclick=()=>select(i);
+        optsEl.appendChild(d);
+      });
+    }
+
+    function select(i){
+      const q=quizData[current];
+      [...optsEl.children].forEach(el=>el.classList.add("disabled"));
+      if(i===q.ans){
+        optsEl.children[i].classList.add("correct");
+        resEl.textContent="✅ Correct";
+        correctCount++;
+        setTimeout(()=>{
+          if(current<quizData.length-1){current++;loadQ();}
+          else showCongrats();
+        },1000);
+      } else {
+        optsEl.children[i].classList.add("wrong");
+        resEl.textContent="❌ Wrong — try again in 5s";
+        setTimeout(()=>{loadQ();},5000);
+      }
+    }
+
+    function showCongrats(){
+      quizCard.style.display="none";
+      congrats.style.display="flex";
+    }
+
+    loadQ();
+  </script>
+</body>
+</html>
